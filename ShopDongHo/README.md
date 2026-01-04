@@ -8,7 +8,7 @@
 
 | STT | Họ tên              | MSSV     | Ngành               |
 | --- | ------------------- | -------- | ------------------- |
-| 6   | Đỗ Thạch Anh        | 23730063 | Công nghệ thông tin |
+| 1   | Đỗ Thạch Anh        | 23730063 | Công nghệ thông tin |
 
 ## Cách Truy Cập
 
