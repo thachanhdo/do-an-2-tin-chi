@@ -8,11 +8,6 @@
 
 | STT | Họ tên              | MSSV     | Ngành               |
 | --- | ------------------- | -------- | ------------------- |
-| 1   | Trần Trung Nghĩa    | 22730042 | Công nghệ thông tin |
-| 2   | Nguyễn Thị Như Ý    | 22730059 | Công nghệ thông tin |
-| 3   | Trần Lê Phú An      | 22730023 | Công nghệ thông tin |
-| 4   | Đỗ Nguyễn Uyên Thảo | 22730050 | Công nghệ thông tin |
-| 5   | Huỳnh Ngọc An Khang | 22730036 | Công nghệ thông tin |
 | 6   | Đỗ Thạch Anh        | 23730063 | Công nghệ thông tin |
 
 ## Cách Truy Cập
