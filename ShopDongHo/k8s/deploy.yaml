@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trial1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shop-dongho-data
+  namespace: trial1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-dongho
+  namespace: trial1
+  labels:
+    app: shop-dongho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-dongho
+  template:
+    metadata:
+      labels:
+        app: shop-dongho
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: trial1
+      containers:
+        - name: shop-dongho
+          image: <YOUR_REGISTRY>/shop-dongho:latest # Replace with your actual image path
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DJANGO_ALLOWED_HOSTS
+              value: "dongho.hmz.one"
+            - name: DJANGO_DEBUG
+              value: "False"
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shop-secrets
+                  key: django-secret-key
+          volumeMounts:
+            - name: sqlite-db
+              mountPath: /app/db.sqlite3
+              subPath: db.sqlite3
+            - name: media-storage
+              mountPath: /app/media
+      volumes:
+        - name: sqlite-db
+          persistentVolumeClaim:
+            claimName: shop-dongho-data
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: shop-dongho-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-dongho-svc
+  namespace: trial1
+spec:
+  selector:
+    app: shop-dongho
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop-dongho-ingress
+  namespace: trial1
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: dongho.hmz.one
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shop-dongho-svc
+                port:
+                  number: 80

@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+staticfiles/
+db.sqlite3
+media/
+.DS_Store
