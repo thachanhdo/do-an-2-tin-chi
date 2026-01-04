@@ -95,8 +95,13 @@ metadata:
   namespace: trial1
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  tls:
+    - hosts:
+        - dongho.hmz.one
+      secretName: dongho-hmz-one-tls
   rules:
     - host: dongho.hmz.one
       http:
@@ -108,3 +113,14 @@ spec:
                 name: shop-dongho-svc
                 port:
                   number: 80
+---
+# Middleware to redirect HTTP to HTTPS
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: default
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
