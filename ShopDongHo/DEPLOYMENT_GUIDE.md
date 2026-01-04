@@ -1,275 +1,235 @@
 # Hướng Dẫn Deploy ShopDongHo lên Kubernetes
 
-## Tổng Quan Dự Án
+## 📋 Tổng Quan
 
-Dự án này deploy ứng dụng Django **ShopDongHo** (Website bán đồng hồ) lên Kubernetes cluster trên server `trial1` với domain `dongho.hmz.one`.
+Dự án này deploy ứng dụng Django **ShopDongHo** (Website bán đồng hồ) lên Kubernetes cluster trên server `trial1` sử dụng domain `dongho.hmz.one`.
 
----
+### Giải Thích Công Nghệ
 
-## 📋 Mục Lục
+#### **Kubernetes (K8s) là gì?**
 
-1. [Kiến Trúc Hệ Thống](#kiến-trúc-hệ-thống)
-2. [Các Bước Chuẩn Bị](#các-bước-chuẩn-bị)
-3. [Quá Trình Deploy Chi Tiết](#quá-trình-deploy-chi-tiết)
-4. [Quản Lý Ứng Dụng](#quản-lý-ứng-dụng)
-5. [Troubleshooting](#troubleshooting)
+**Kubernetes** là một nền tảng mã nguồn mở để quản lý, triển khai và tự động hóa các ứng dụng container. Nó giúp:
 
----
+- **Tự động triển khai** (automatic deployment)
+- **Tự động mở rộng** (auto-scaling)
+- **Tự phục hồi** (self-healing khi container bị lỗi)
+- **Cân bằng tải** (load balancing)
+- **Quản lý storage** (persistent volumes)
 
-## Kiến Trúc Hệ Thống
+**Ví dụ**: Nếu server của bạn bị sập hoặc ứng dụng bị lỗi, Kubernetes tự động restart và đảm bảo ứng dụng luôn chạy.
+
+#### **K3s là gì?**
+
+**K3s** là một phiên bản **lightweight (nhẹ)** của Kubernetes được thiết kế cho:
+
+- **IoT devices** (thiết bị nhỏ)
+- **Edge computing** (máy chủ nhỏ)
+- **Single-node clusters** (chỉ 1 server)
+
+**So sánh**:
+
+- **Kubernetes gốc**: ~500MB binary, phức tạp, cần nhiều tài nguyên
+- **K3s**: ~70MB binary, đơn giản, chạy ngay trên 1 server nhỏ
+
+**Vai trò trong dự án này**:
+
+- K3s tạo một Kubernetes cluster trên server `trial1`
+- K3s **tự động cài sẵn**:
+  - ✅ Traefik (Ingress Controller) → Route HTTP traffic
+  - ✅ Local-path storage → Lưu database & media files
+  - ✅ CoreDNS → DNS cho cluster
+  - ✅ Metrics server → Monitoring resources
+- Chúng ta chỉ cần **1 lệnh cài đặt** là có ngay Kubernetes cluster hoàn chỉnh!
+
+#### **Kiến Trúc Hệ Thống**
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Internet (dongho.hmz.one)                  │
-│  DNS: 114.29.239.33                         │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
+│  Internet                                   │
+│  User truy cập: http://dongho.hmz.one       │
+└──────────────────┬──────────────────────────┘
+                   │ DNS: dongho.hmz.one
+                   │ → 114.29.239.33
+                   ▼
 ┌─────────────────────────────────────────────┐
-│  trial1 Server (114.29.239.33)              │
-│  ┌───────────────────────────────────────┐  │
-│  │  K3s Kubernetes Cluster               │  │
-│  │  ┌─────────────────────────────────┐  │  │
-│  │  │  Traefik Ingress Controller     │  │  │
-│  │  │  (Port 80/443)                  │  │  │
-│  │  └────────────┬────────────────────┘  │  │
-│  │               │                        │  │
-│  │  ┌────────────▼────────────────────┐  │  │
-│  │  │  shop-dongho-svc (ClusterIP)    │  │  │
-│  │  │  Port: 80 → 8000                │  │  │
-│  │  └────────────┬────────────────────┘  │  │
-│  │               │                        │  │
-│  │  ┌────────────▼────────────────────┐  │  │
-│  │  │  shop-dongho Pod                │  │  │
-│  │  │  - Django + Gunicorn (port 8000)│  │  │
-│  │  │  - Database: SQLite (PVC)       │  │  │
-│  │  │  - Media Files (PVC)            │  │  │
-│  │  └─────────────────────────────────┘  │  │
-│  └───────────────────────────────────────┘  │
+│  Server trial1 (114.29.239.33)              │
+│                                              │
+│  ┌──Kubernetes (K3s)─────────────────────┐  │
+│  │                                        │  │
+│  │  1️⃣ TRAEFIK (Port 80)                  │  │
+│  │     ↓ Route based on domain           │  │
+│  │     dongho.hmz.one → shop-dongho-svc  │  │
+│  │                                        │  │
+│  │  2️⃣ SERVICE (ClusterIP)                │  │
+│  │     shop-dongho-svc:80                │  │
+│  │     ↓ Forward to pod                  │  │
+│  │                                        │  │
+│  │  3️⃣ POD (Container)                    │  │
+│  │     ┌──────────────────────────┐       │  │
+│  │     │ Django + Gunicorn:8000   │       │  │
+│  │     │ - Python 3.11            │       │  │
+│  │     │ - 3 workers              │       │  │
+│  │     │                          │       │  │
+│  │     │ Volumes:                 │       │  │
+│  │     │ /app/data ← PVC (DB)     │       │  │
+│  │     │ /app/media ← PVC (Images)│       │  │
+│  │     └──────────────────────────┘       │  │
+│  │                ↓                       │  │
+│  │  4️⃣ PERSISTENT VOLUME (Local-path)     │  │
+│  │     /var/lib/rancher/k3s/storage/...  │  │
+│  │     ├── data/db.sqlite3 (Database)    │  │
+│  │     └── media/uploads/*.webp (Images) │  │
+│  └────────────────────────────────────────┘  │
 └─────────────────────────────────────────────┘
+
+Luồng request:
+1. User → dongho.hmz.one
+2. DNS → 114.29.239.33 (trial1)
+3. Traefik (port 80) nhận request
+4. Traefik route → shop-dongho-svc
+5. Service forward → Pod (container)
+6. Django/Gunicorn xử lý request
+7. Trả về HTML/CSS/Images cho user
 ```
 
 ---
 
-## Các Bước Chuẩn Bị
-
-### 1. Cấu Trúc Thư Mục Dự Án
-
-```
-ShopDongHo/
-├── Dockerfile                 # Docker image definition
-├── .dockerignore             # Loại trừ files không cần thiết
-├── requirements.txt          # Python dependencies
-├── manage.py                 # Django management
-├── ShopDongHo/
-│   ├── settings.py          # Django settings (đã cấu hình cho production)
-│   ├── wsgi.py              # WSGI entry point
-│   └── ...
-├── core/                     # Django app chính
-├── admincustom/             # Django admin custom
-├── static/                   # Static files (CSS, JS, images)
-├── media/                    # User uploaded files
-├── db.sqlite3               # Database (local, sẽ copy lên K8s)
-└── k8s/
-    ├── secrets.yaml         # Kubernetes secrets
-    ├── deploy_final.yaml    # Kubernetes deployment manifest
-    └── ...
-```
-
-### 2. Các File Quan Trọng Đã Tạo/Sửa Đổi
-
-#### **Dockerfile**
-
-- Base image: `python:3.11-slim`
-- Cài đặt system dependencies (`libpq-dev`, `gcc`)
-- Copy và cài đặt Python packages từ `requirements.txt`
-- Copy toàn bộ project code
-- Chạy `collectstatic` để thu thập static files
-- Expose port 8000
-- Khởi động ứng dụng với Gunicorn (3 workers)
-
-#### **requirements.txt**
-
-```
-django>=5.0.4
-gunicorn
-whitenoise
-pillow
-```
-
-#### **settings.py** (Các thay đổi quan trọng)
-
-- `SECRET_KEY`: Load từ environment variable `DJANGO_SECRET_KEY`
-- `DEBUG`: Load từ `DJANGO_DEBUG` (set = False trong K8s)
-- `ALLOWED_HOSTS`: Load từ `DJANGO_ALLOWED_HOSTS` (dongho.hmz.one)
-- `MIDDLEWARE`: Thêm `WhiteNoiseMiddleware` để serve static files
-- `STATIC_ROOT`: `/app/staticfiles`
-- `MEDIA_ROOT`: `/app/media`
-- `DATABASES`: SQLite tại `/app/data/db.sqlite3`
-- `CSRF_TRUSTED_ORIGINS`: `["https://dongho.hmz.one"]`
-- `STORAGES`: Sử dụng WhiteNoise's `CompressedStaticFilesStorage`
-- `WHITENOISE_MANIFEST_STRICT`: False (để tránh lỗi với missing source maps)
-
-#### **k8s/secrets.yaml**
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: shop-secrets
-  namespace: trial1
-type: Opaque
-stringData:
-  django-secret-key: "<auto-generated-secret-key>"
-```
-
-#### **k8s/deploy_final.yaml**
-
-Chứa tất cả Kubernetes resources:
-
-- **Namespace**: `trial1`
-- **PersistentVolumeClaim**: `shop-dongho-data` (1Gi storage)
-- **Deployment**:
-  - InitContainer: Tạo directories `/app/data` và `/app/media`
-  - Main container: Django app với Gunicorn
-  - Volume mounts: PVC mounted tại `/app/data` và `/app/media` (subPaths)
-  - Environment variables từ secrets và config
-- **Service**: `shop-dongho-svc` (ClusterIP, port 80→8000)
-- **Ingress**: Route traffic từ `dongho.hmz.one` đến service
-
----
-
-## Quá Trình Deploy Chi Tiết
+## 🚀 Các Bước Deploy
 
 ### Bước 1: Cài Đặt K3s trên trial1
 
-K3s là lightweight Kubernetes distribution, rất phù hợp cho single-node clusters.
-
 ```bash
-# SSH vào trial1
+# SSH vào server
 ssh root@trial1
 
-# Cài đặt K3s với Docker runtime
+# Cài K3s với Docker runtime (1 lẹnh duy nhất!)
 curl -sfL https://get.k3s.io | sh -s - --docker
 
-# Kiểm tra K3s đã chạy
+# Kiểm tra
 kubectl get nodes
-# Output: trial1   Ready    control-plane   <age>   v1.34.3+k3s1
+# Output: trial1   Ready    control-plane   <time>   v1.34.3+k3s1
 ```
 
-**Những gì K3s tự động cài đặt:**
+**Sau lệnh này, bạn đã có**:
 
-- Kubernetes API server
-- Controller manager
-- Scheduler
-- Kubelet
-- Traefik Ingress Controller (built-in)
-- Local-path storage provisioner
-- CoreDNS
-- Metrics server
+- ✅ Kubernetes cluster hoạt động
+- ✅ Traefik Ingress Controller (tự động)
+- ✅ Storage provisioner (tự động)
+- ✅ kubectl command để quản lý
 
-### Bước 2: Sync Source Code lên trial1
+---
+
+### Bước 2: Clone Source Code từ GitHub
 
 ```bash
-# Từ máy local, sync code lên trial1
-scp -r "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo" root@trial1:/root/do-an-2-tin-chi/
+# Trên server trial1
+cd /tmp
+git clone https://github.com/thachanhdo/do-an-2-tin-chi.git ShopDongHo
+cd ShopDongHo/ShopDongHo
 ```
 
-### Bước 3: Build Docker Image trên trial1
+**Tại sao dùng /tmp?**
+
+- Source code chỉ cần để build Docker image
+- Sau khi build xong, ta sẽ **xóa source code** để giữ server sạch
+- Chỉ giữ lại Docker image và K8s resources
+
+---
+
+### Bước 3: Build Docker Image
 
 ```bash
-# SSH vào trial1
-ssh root@trial1
-
-# Di chuyển vào thư mục project
-cd /root/do-an-2-tin-chi/ShopDongHo
-
-# Update settings.py để sử dụng đúng DB path
-sed -i 's/BASE_DIR \/ "db.sqlite3"/BASE_DIR \/ "data" \/ "db.sqlite3"/g' ShopDongHo/settings.py
-
-# Fix WhiteNoise storage class để tránh lỗi manifest
-sed -i 's/CompressedManifestStaticFilesStorage/CompressedStaticFilesStorage/g' ShopDongHo/settings.py
-
-# Build Docker image với tag local
+# Build image từ Dockerfile
 docker build --network=host -t shop-dongho:latest .
 ```
 
-**Build process:**
+**Quá trình build**:
 
-1. Pull base image `python:3.11-slim`
-2. Install system packages
-3. Install Python dependencies
-4. Copy application code
-5. Run `collectstatic` (thu thập 1144 static files)
-6. Create final image (~549MB)
+1. Tải Python 3.11 base image (~150MB)
+2. Cài đặt system packages (gcc, libpq-dev)
+3. Copy requirements.txt và cài Python packages
+4. Copy toàn bộ code Django vào /app
+5. Chạy `collectstatic` → Thu thập 1144 static files
+6. Tạo image final (~549MB)
 
-### Bước 4: Chuẩn Bị Dữ Liệu (Database & Media)
+**Tại sao cần `--network=host`?**
 
-```bash
-# Copy database từ local lên trial1
-scp "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\db.sqlite3" root@trial1:/root/
+- Cho Docker sử dụng network của host (trial1)
+- Tránh lỗi DNS khi cài packages từ PyPI
 
-# Copy media files từ local lên trial1
-scp -r "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\media" root@trial1:/root/
+---
 
-# Tạo cấu trúc thư mục trong PVC storage
-# (Sẽ được tạo tự động bởi K3s local-path provisioner khi PVC được claim)
-```
-
-### Bước 5: Deploy Kubernetes Resources
+### Bước 4: Apply Kubernetes Resources
 
 ```bash
-# Apply namespace và tất cả resources
-kubectl apply -f /root/do-an-2-tin-chi/ShopDongHo/k8s/deploy_final.yaml
+# Apply secrets (Django SECRET_KEY)
+kubectl apply -f /tmp/ShopDongHo/ShopDongHo/k8s/secrets.yaml
 
-# Apply secrets
-kubectl apply -f /root/do-an-2-tin-chi/ShopDongHo/k8s/secrets.yaml
+# Apply deployment (Namespace, PVC, Deployment, Service, Ingress)
+kubectl apply -f /tmp/ShopDongHo/ShopDongHo/k8s/deploy_final.yaml
 ```
 
-**Kubernetes tự động thực hiện:**
+**Kubernetes tự động thực hiện**:
 
 1. Tạo namespace `trial1`
-2. Provision PersistentVolumeClaim (local-path tạo thư mục tại `/var/lib/rancher/k3s/storage/pvc-xxx`)
-3. Schedule pod lên node `trial1`
-4. Chạy init container để tạo `/app/data` và `/app/media`
-5. Mount PVC vào container
-6. Pull image `shop-dongho:latest` từ local registry
-7. Start container với Gunicorn
-8. Tạo ClusterIP service
-9. Configure Traefik ingress để route traffic
+2. Tạo PersistentVolumeClaim (1Gi storage)
+3. K3s local-path provisioner tự động tạo folder: `/var/lib/rancher/k3s/storage/pvc-xxx`
+4. Schedule pod lên node trial1
+5. Chạy init container → Tạo `/app/data` và `/app/media`
+6. Mount PVC vào pod
+7. Start container Django với Gunicorn
+8. Tạo ClusterIP Service (shop-dongho-svc)
+9. Traefik tự động đọc Ingress config và route traffic
 
-### Bước 6: Copy Dữ Liệu vào PVC
+---
+
+### Bước 5: Copy Database & Media Files vào PVC
 
 ```bash
-# Tìm PVC volume path (thay xxx bằng PVC UUID thực tế)
-PVC_PATH=$(kubectl get pvc -n trial1 shop-dongho-data -o jsonpath='{.spec.volumeName}')
-STORAGE_PATH="/var/lib/rancher/k3s/storage/pvc-${PVC_PATH}_trial1_shop-dongho-data"
+# Tìm PVC storage path
+PVC_ID=$(kubectl get pvc -n trial1 shop-dongho-data -o jsonpath='{.spec.volumeName}')
+STORAGE_PATH="/var/lib/rancher/k3s/storage/${PVC_ID}_trial1_shop-dongho-data"
 
-# Tạo cấu trúc thư mục
-mkdir -p ${STORAGE_PATH}/data ${STORAGE_PATH}/media
+# Upload database từ local
+scp "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\db.sqlite3" root@trial1:/tmp/
 
-# Copy database
-cp /root/db.sqlite3 ${STORAGE_PATH}/data/
+# Copy vào PVC
+mkdir -p ${STORAGE_PATH}/data
+cp /tmp/db.sqlite3 ${STORAGE_PATH}/data/
 
-# Copy media files
-cp -r /root/media/uploads ${STORAGE_PATH}/media/
+# Upload media files từ local
+scp -r "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\media" root@trial1:/tmp/
+
+# Copy vào PVC
+cp -r /tmp/media/uploads ${STORAGE_PATH}/media/
 
 # Set permissions
 chown -R 1000:1000 ${STORAGE_PATH}
 ```
 
-### Bước 7: Restart Pod để Mount Đúng Dữ Liệu
+---
+
+### Bước 6: Restart Pod để Apply Changes
 
 ```bash
-# Xóa pod cũ để K8s tạo pod mới với data
+# Xóa pod, K8s tự động tạo pod mới
 kubectl delete pod -n trial1 -l app=shop-dongho
+
+# Hoặc restart deployment
+kubectl rollout restart deployment/shop-dongho -n trial1
+
+# Kiểm tra
+kubectl get pods -n trial1
+# Output: shop-dongho-xxx   1/1   Running   0   10s
 ```
 
-### Bước 8: Cấu Hình DNS
+---
 
-Trỏ domain `dongho.hmz.one` về IP của trial1: `114.29.239.33`
+### Bước 7: Cấu Hình DNS
 
-**DNS Records:**
+Trỏ domain `dongho.hmz.one` về IP của trial1:
+
+**DNS Record**:
 
 ```
 Type: A
@@ -278,284 +238,306 @@ Value: 114.29.239.33
 TTL: 300
 ```
 
+---
+
+### Bước 8: Dọn Dẹp Source Code
+
+```bash
+# Xóa source code tạm
+rm -rf /tmp/ShopDongHo /tmp/db.sqlite3 /tmp/media
+
+# Verify server sạch sẽ
+ls /tmp/
+```
+
+**Kết quả**:
+
+- ✅ Source code đã bị xóa
+- ✅ Docker image vẫn tồn tại: `shop-dongho:latest`
+- ✅ K8s resources đang chạy
+- ✅ Data trong PVC an toàn
+
+---
+
 ### Bước 9: Verify Deployment
 
 ```bash
-# Kiểm tra pods đang chạy
+# Kiểm tra pods
 kubectl get pods -n trial1
-# Output: shop-dongho-xxx   1/1   Running   0   <age>
+# Output: shop-dongho-xxx   1/1   Running   0   <time>
 
-# Kiểm tra service
-kubectl get svc -n trial1
-# Output: shop-dongho-svc   ClusterIP   10.43.x.x   <none>   80/TCP
+# Xem logs
+kubectl logs -n trial1 -l app=shop-dongho
 
 # Kiểm tra ingress
 kubectl get ingress -n trial1
 # Output: shop-dongho-ingress   traefik   dongho.hmz.one   114.29.239.33   80
 
-# Test từ trong cluster
-curl -H 'Host: dongho.hmz.one' http://10.43.30.209
+# Test từ internet
+curl -I http://dongho.hmz.one
 # Output: HTTP/1.1 200 OK
-
-# Test từ bên ngoài
-curl http://dongho.hmz.one
-# Output: HTTP/1.1 200 OK (HTML content)
 ```
 
 ---
 
-## Quản Lý Ứng Dụng
+## 📚 Kubernetes Resources Explained
 
-### 🔍 Kiểm Tra Trạng Thái
+### 1. Namespace
 
-```bash
-# Kiểm tra tất cả pods
-kubectl get pods -n trial1
-
-# Xem logs của app
-kubectl logs -n trial1 -l app=shop-dongho
-
-# Xem logs real-time
-kubectl logs -n trial1 -l app=shop-dongho -f
-
-# Kiểm tra chi tiết pod
-kubectl describe pod -n trial1 -l app=shop-dongho
-
-# Kiểm tra ingress
-kubectl get ingress -n trial1
-
-# Kiểm tra service endpoints
-kubectl get endpoints -n trial1 shop-dongho-svc
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trial1
 ```
 
-### 🔄 Cập Nhật Ứng Dụng
+**Vai trò**: Tách biệt resources, giống như folder trong máy tính.
 
-#### **Option 1: Rebuild Image & Restart**
+### 2. PersistentVolumeClaim (PVC)
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shop-dongho-data
+  namespace: trial1
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+**Vai trò**: Yêu cầu 1Gi storage để lưu database và media files. K3s tự động tạo folder `/var/lib/rancher/k3s/storage/pvc-xxx` và mount vào pod.
+
+### 3. Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-dongho
+spec:
+  replicas: 1
+  template:
+    spec:
+      initContainers: [...] # Tạo folders
+      containers:
+        - name: shop-dongho
+          image: shop-dongho:latest
+          env:
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef: ...
+          volumeMounts:
+            - name: storage
+              mountPath: /app/data
+              subPath: data
+```
+
+**Vai trò**: Định nghĩa cách chạy ứng dụng, bao gồm image, environment variables, volumes.
+
+### 4. Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-dongho-svc
+spec:
+  selector:
+    app: shop-dongho
+  ports:
+    - port: 80
+      targetPort: 8000
+```
+
+**Vai trò**: Expose pod ra một ClusterIP cố định. Ingress sẽ route traffic đến Service này.
+
+### 5. Ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop-dongho-ingress
+spec:
+  rules:
+    - host: dongho.hmz.one
+      http:
+        paths:
+          - path: /
+            backend:
+              service:
+                name: shop-dongho-svc
+                port:
+                  number: 80
+```
+
+**Vai trò**: Cho Traefik biết: "Request đến `dongho.hmz.one` → Forward đến service `shop-dongho-svc`".
+
+---
+
+## 🔄 Update Code (Workflow Hoàn Chỉnh)
+
+### Khi có thay đổi code:
 
 ```bash
-# 1. Rebuild Docker image với changes mới
-cd /root/do-an-2-tin-chi/ShopDongHo
+# 1. Commit và push lên GitHub (từ máy local)
+cd "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo"
+git add -A
+git commit -m "Update feature X"
+git push
+
+# 2. SSH vào trial1
+ssh root@trial1
+
+# 3. Clone code mới và build
+cd /tmp
+rm -rf ShopDongHo
+git clone https://github.com/thachanhdo/do-an-2-tin-chi.git ShopDongHo
+cd ShopDongHo/ShopDongHo
 docker build --network=host -t shop-dongho:latest .
 
-# 2. Restart pods để pull image mới
+# 4. Restart deployment
 kubectl rollout restart deployment/shop-dongho -n trial1
 
-# 3. Theo dõi rollout status
+# 5. Theo dõi deployment
 kubectl rollout status deployment/shop-dongho -n trial1
+
+# 6. Xem logs
+kubectl logs -n trial1 -l app=shop-dongho -f
+
+# 7. Dọn dẹp
+cd /tmp
+rm -rf ShopDongHo
+
+# 8. Verify
+curl -I http://dongho.hmz.one
 ```
 
-#### **Option 2: Scale to Zero & Back**
+## 🔧 Quản Lý & Debug
+
+### Xem Logs
 
 ```bash
-# Scale down
-kubectl scale deployment shop-dongho -n trial1 --replicas=0
+# Real-time logs
+kubectl logs -n trial1 -l app=shop-dongho -f
 
-# Scale up
-kubectl scale deployment shop-dongho -n trial1 --replicas=1
+# Logs của pod trước (nếu pod bị crash)
+kubectl logs -n trial1 -l app=shop-dongho --previous
 ```
 
-### 🗄️ Quản Lý Database
+### Exec vào Pod
 
 ```bash
-# Exec vào pod để chạy Django management commands
+# Mở shell trong pod
 kubectl exec -it -n trial1 deployment/shop-dongho -- bash
 
-# Trong pod:
-python manage.py migrate                # Chạy migrations
-python manage.py createsuperuser        # Tạo admin user
-python manage.py collectstatic          # Thu thập static files mới
-python manage.py shell                  # Django shell
-
-# Hoặc chạy one-liner từ bên ngoài
-kubectl exec -it -n trial1 deployment/shop-dongho -- python manage.py migrate
+# Trong pod, chạy Django commands:
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py shell
 ```
 
-### 💾 Backup & Restore
-
-#### **Backup Database**
+### Backup Database
 
 ```bash
-# Tìm PVC path
 PVC_ID=$(kubectl get pvc -n trial1 shop-dongho-data -o jsonpath='{.spec.volumeName}')
 STORAGE_PATH="/var/lib/rancher/k3s/storage/${PVC_ID}_trial1_shop-dongho-data"
 
-# Backup database
-cp ${STORAGE_PATH}/data/db.sqlite3 /root/backups/db.sqlite3.$(date +%Y%m%d_%H%M%S)
-
-# Backup media files
-tar -czf /root/backups/media_$(date +%Y%m%d_%H%M%S).tar.gz -C ${STORAGE_PATH} media/
+mkdir -p /root/backups
+cp ${STORAGE_PATH}/data/db.sqlite3 \
+   /root/backups/db.sqlite3.$(date +%Y%m%d_%H%M%S)
 ```
 
-#### **Restore Database**
+### Restore Database
 
 ```bash
-# Stop pods
+# 1. Stop pods
 kubectl scale deployment shop-dongho -n trial1 --replicas=0
 
-# Restore database
-cp /root/backups/db.sqlite3.20260104 ${STORAGE_PATH}/data/db.sqlite3
+# 2. Restore
+cp /root/backups/db.sqlite3.20260104_140000 \
+   ${STORAGE_PATH}/data/db.sqlite3
 
-# Start pods
+# 3. Start pods
 kubectl scale deployment shop-dongho -n trial1 --replicas=1
-```
-
-### 🔧 Sửa Lỗi & Debug
-
-```bash
-# Xem events của namespace
-kubectl get events -n trial1 --sort-by='.lastTimestamp'
-
-# Xem logs của init container
-kubectl logs -n trial1 <pod-name> -c init-dirs
-
-# Exec vào pod để debug
-kubectl exec -it -n trial1 deployment/shop-dongho -- bash
-
-# Port forward để test local
-kubectl port-forward -n trial1 svc/shop-dongho-svc 8000:80
-# Truy cập: http://localhost:8000
-
-# Kiểm tra environment variables
-kubectl exec -n trial1 deployment/shop-dongho -- env | grep DJANGO
-```
-
-### 🧹 Dọn Dẹp
-
-```bash
-# Xóa toàn bộ deployment (GIỮ PVC)
-kubectl delete deployment,service,ingress -n trial1 -l app=shop-dongho
-
-# Xóa hết (BAO GỒM DỮ LIỆU)
-kubectl delete namespace trial1
-
-# Xóa image cũ
-docker image prune -a
-```
-
-### 📊 Monitoring
-
-```bash
-# Xem resource usage
-kubectl top pods -n trial1
-kubectl top nodes
-
-# Xem metrics của pod
-kubectl describe pod -n trial1 -l app=shop-dongho | grep -A 5 "Limits\|Requests"
-
-# Kiểm tra PVC usage
-kubectl exec -n trial1 deployment/shop-dongho -- df -h /app/data /app/media
 ```
 
 ---
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-### ❌ Pod không start (CrashLoopBackOff)
+### Pod không start
 
 ```bash
-# Xem logs
+# Xem lỗi
+kubectl describe pod -n trial1 -l app=shop-dongho
 kubectl logs -n trial1 -l app=shop-dongho --previous
 
-# Xem events
-kubectl describe pod -n trial1 -l app=shop-dongho
-
 # Common issues:
-# - Database path sai → Check DATABASES setting
-# - Missing environment variables → Check secrets
-# - Permission issues → Check volume mounts
+# - Image pull error → Check if image exists: docker images
+# - CrashLoopBackOff → Check logs
+# - PVC không mount → Check PVC: kubectl get pvc -n trial1
 ```
 
-### ❌ Không truy cập được qua domain
+### Website không truy cập được
 
 ```bash
 # 1. Kiểm tra DNS
 nslookup dongho.hmz.one
 # Phải trả về: 114.29.239.33
 
-# 2. Kiểm tra Traefik service
+# 2. Kiểm tra Traefik
 kubectl get svc -n kube-system traefik
 # EXTERNAL-IP phải là 114.29.239.33
 
-# 3. Kiểm tra ingress
-kubectl get ingress -n trial1
+# 3. Test từ trial1
+curl -H 'Host: dongho.hmz.one' http://localhost
+
+# 4. Kiểm tra ingress
 kubectl describe ingress -n trial1 shop-dongho-ingress
-
-# 4. Test từ trial1
-ssh root@trial1 "curl -H 'Host: dongho.hmz.one' http://localhost"
-
-# 5. Kiểm tra Traefik logs
-kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
 ```
-
-### ❌ Static files không load
-
-```bash
-# 1. Kiểm tra collectstatic đã chạy trong build
-docker history shop-dongho:latest | grep collectstatic
-
-# 2. Kiểm tra WhiteNoise middleware
-kubectl exec -n trial1 deployment/shop-dongho -- python manage.py check
-
-# 3. Rebuild image nếu cần
-cd /root/do-an-2-tin-chi/ShopDongHo
-docker build --network=host -t shop-dongho:latest .
-kubectl rollout restart deployment/shop-dongho -n trial1
-```
-
-### ❌ Database bị mất sau khi restart
-
-```bash
-# Kiểm tra PVC vẫn còn
-kubectl get pvc -n trial1
-
-# Kiểm tra volume mount trong pod
-kubectl describe pod -n trial1 -l app=shop-dongho | grep -A 5 "Mounts:"
-
-# Verify data trong PVC
-PVC_ID=$(kubectl get pvc -n trial1 shop-dongho-data -o jsonpath='{.spec.volumeName}')
-ls -lah /var/lib/rancher/k3s/storage/${PVC_ID}_trial1_shop-dongho-data/data/
-```
-
----
 
 ## 📝 Tổng Kết
 
-### Các Thành Phần Chính
+### Công Nghệ Sử Dụng
 
-1. **K3s**: Lightweight Kubernetes (v1.34.3)
-2. **Traefik**: Ingress controller (built-in K3s)
-3. **Local-path provisioner**: Dynamic PV provisioning
-4. **Docker**: Container runtime
-5. **Django + Gunicorn**: Application stack
-6. **WhiteNoise**: Static file serving
-7. **SQLite**: Database (persistent storage)
+- **K3s**: Lightweight Kubernetes (v1.34.3)
+- **Traefik**: Ingress Controller (tự động với K3s)
+- **Local-path**: Storage provisioner (tự động với K3s)
+- **Docker**: Container runtime
+- **Django 5.0.4**: Web framework
+- **Gunicorn**: WSGI server (3 workers)
+- **WhiteNoise**: Static files serving
+- **SQLite**: Database (persistent storage)
 
-### Điểm Mạnh
+### Ưu Điểm
 
-- ✅ Đơn giản, dễ quản lý
-- ✅ Tự động scale và restart
-- ✅ Persistent storage cho DB và media
-- ✅ Production-ready với Gunicorn
-- ✅ SSL-ready (có thể thêm cert-manager)
+- ✅ **Đơn giản**: Chỉ 1 server, cài K3s bằng 1 lệnh
+- ✅ **Tự động**: K8s tự restart khi pod crash
+- ✅ **Persistent**: Data không mất khi pod restart
+- ✅ **Production-ready**: Gunicorn, DEBUG=False
+- ✅ **Clean**: Source code không lưu trên server
 
 ### Giới Hạn
 
-- ⚠️ Single-node cluster (không HA)
-- ⚠️ SQLite không phù hợp cho traffic cao
-- ⚠️ Cần thêm monitoring/logging cho production
-- ⚠️ Chưa có auto-scaling
+- ⚠️ **Single-node**: Không có HA (High Availability)
+- ⚠️ **SQLite**: Không phù hợp cho traffic cao
+- ⚠️ **No SSL**: Chưa cấu hình HTTPS
+- ⚠️ **Manual deployment**: Chưa có CI/CD
 
 ### Next Steps (Tùy Chọn)
 
-1. **HTTPS/SSL**: Install cert-manager + Let's Encrypt
-2. **Database**: Migrate từ SQLite sang PostgreSQL/MySQL
-3. **Monitoring**: Prometheus + Grafana
-4. **Logging**: ELK stack hoặc Loki
-5. **Backup**: Automated backup với CronJob
-6. **CI/CD**: GitHub Actions để auto-deploy
+1. **HTTPS**: Cài cert-manager + Let's Encrypt
+2. **Database**: Migrate sang PostgreSQL
+3. **Auto-deploy**: GitHub Actions
+4. **Monitoring**: Prometheus + Grafana
+5. **Backup automation**: Kubernetes CronJob
 
 ---
 
-**Tác giả**: Deployment guide được tạo ngày 04/01/2026
-**Version**: 1.0
-**Contact**: Đỗ Thạch Anh (MSSV: 23730063)
+**Tác giả**: Đỗ Thạch Anh (MSSV: 23730063)
+**Ngày tạo**: 04/01/2026
+**Version**: 2.0 (Updated with GitHub workflow)

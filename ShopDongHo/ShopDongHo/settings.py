@@ -146,6 +146,11 @@ STORAGES = {
 
 WHITENOISE_MANIFEST_STRICT = False
 
+# Configure WhiteNoise to serve media files
+WHITENOISE_STATIC_PREFIX = '/static/'
+WHITENOISE_ROOT = STATIC_ROOT
+WHITENOISE_USE_FINDERS = True
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
