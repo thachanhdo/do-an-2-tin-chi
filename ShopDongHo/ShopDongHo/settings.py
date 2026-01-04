@@ -146,10 +146,10 @@ STORAGES = {
 
 WHITENOISE_MANIFEST_STRICT = False
 
-# Configure WhiteNoise to serve media files
-WHITENOISE_STATIC_PREFIX = '/static/'
-WHITENOISE_ROOT = STATIC_ROOT
-WHITENOISE_USE_FINDERS = True
+# Configure WhiteNoise to NOT serve media files (let Django handle it)
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'webm', 'ogg', 'mp3', 'wav', 'pdf')
+WHITENOISE_MAX_AGE = 31536000  # 1 year for static files
+WHITENOISE_AUTOREFRESH = True  # Auto-detect new files
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

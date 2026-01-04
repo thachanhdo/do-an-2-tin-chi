@@ -28,9 +28,6 @@ ENV STATIC_ROOT /app/staticfiles
 # Run collectstatic (requires DJANGO_SETTINGS_MODULE and possibly a dummy SECRET_KEY if not set)
 RUN python manage.py collectstatic --noinput
 
-# Copy media files into staticfiles so WhiteNoise can serve them
-RUN cp -r /app/media /app/staticfiles/media || true
-
 # Expose port
 EXPOSE 8000
 
