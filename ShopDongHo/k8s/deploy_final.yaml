@@ -35,19 +35,17 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: trial1
       initContainers:
-        - name: init-data
+        - name: init-dirs
           image: python:3.11-slim
           command:
             [
               "sh",
               "-c",
-              "mkdir -p /app/data /app/media && chown -R 1000:1000 /app/data /app/media",
+              "mkdir -p /mnt/data /mnt/media && chown -R 1000:1000 /mnt",
             ]
           volumeMounts:
-            - name: sqlite-db
-              mountPath: /app/data
-            - name: media-storage
-              mountPath: /app/media
+            - name: storage
+              mountPath: /mnt
       containers:
         - name: shop-dongho
           image: shop-dongho:latest
@@ -65,15 +63,14 @@ spec:
                   name: shop-secrets
                   key: django-secret-key
           volumeMounts:
-            - name: sqlite-db
+            - name: storage
               mountPath: /app/data
-            - name: media-storage
+              subPath: data
+            - name: storage
               mountPath: /app/media
+              subPath: media
       volumes:
-        - name: sqlite-db
-          persistentVolumeClaim:
-            claimName: shop-dongho-data
-        - name: media-storage
+        - name: storage
           persistentVolumeClaim:
             claimName: shop-dongho-data
 ---
@@ -97,9 +94,8 @@ metadata:
   name: shop-dongho-ingress
   namespace: trial1
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
     - host: dongho.hmz.one

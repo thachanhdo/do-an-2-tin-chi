@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop-dongho-ingress
+  namespace: trial1
+spec:
+  rules:
+    - host: dongho.hmz.one
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shop-dongho-svc
+                port:
+                  number: 80

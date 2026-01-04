@@ -39,5 +39,5 @@ urlpatterns = [
     path('cancel_order/<int:MaDon>/', cancel_order, name='cancel_order'),
     path('get_order_details/<int:MaDon>/', get_order_details, name='get_order_details'),
 ]
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files in all environments (including production)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
