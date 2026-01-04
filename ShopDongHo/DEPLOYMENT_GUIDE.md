@@ -1,6 +1,25 @@
 # Hướng Dẫn Deploy ShopDongHo lên Kubernetes
 
-## 📋 Tổng Quan
+## � Kết Nối SSH
+
+**Lưu ý**: Trong tài liệu này, các lệnh `ssh root@trial1` có thể thay bằng:
+
+### Sử dụng PuTTY (Windows):
+
+```cmd
+"C:\Program Files\PuTTY\putty.exe" root@114.29.239.33 -pw thachanh
+```
+
+### Hoặc SSH thông thường:
+
+```bash
+ssh root@114.29.239.33
+# Password: thachanh
+```
+
+---
+
+## �📋 Tổng Quan
 
 Dự án này deploy ứng dụng Django **ShopDongHo** (Website bán đồng hồ) lên Kubernetes cluster trên server `trial1` sử dụng domain `dongho.hmz.one`.
 

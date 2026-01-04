@@ -2,8 +2,17 @@
 
 ## 🚀 SSH vào Server
 
+### PuTTY (Windows):
+
+```cmd
+"C:\Program Files\PuTTY\putty.exe" root@114.29.239.33 -pw thachanh
+```
+
+### SSH thông thường:
+
 ```bash
-ssh root@trial1
+ssh root@114.29.239.33
+# Password: thachanh
 ```
 
 ---
