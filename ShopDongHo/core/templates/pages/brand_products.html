@@ -1,0 +1,121 @@
+{% extends "page/layout.html" %}
+{% block title %} {{ thuong_hieu.TenDanhMuc }} Products {% endblock %}
+{% block container %}
+{% load static %}
+<div class="wrapper-container">
+    <main class="main-content">
+        <!-- Product Grid -->
+        <div class="products-grid">
+            {% for chiTiet_SP in chiTiet_SP %}
+            {% with chiTiet_SP.MaSP as san_pham %}
+            <div class="product-item">
+                <div class="product-top">
+                    <div class="product-image">
+                        <a href="/product/{{ san_pham.MaSP }}" class="product-grid-image adaptive_height">
+                            <picture data-index="0">
+                                <img src="/media/uploads/{{ san_pham.HinhAnh }}" alt="{{ san_pham.TenSP }}">
+                            </picture>
+                        </a>
+                    </div>
+                </div>
+                <div class="product-bottom">
+                    <a class="product-title" href="/product/{{ san_pham.MaSP }}">{{ san_pham.TenSP }}</a>
+                    {% load custom_filters %}
+                    <div class="price-box">
+                        <div class="price-sale">
+                            <span class="old-price">{{ san_pham.GiaBan|format_vnd }}</span>
+                            <span class="special-price">{{ san_pham.GiaGiam|format_vnd }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </main>
+</div>
+<style>
+    .wrapper-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-gap: 20px;
+    }
+
+    .product-item {
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .product-top {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .product-image img {
+        width: 100%;
+        height: auto;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .product-item:hover .product-image img {
+        transform: scale(1.1);
+    }
+
+    .product-bottom {
+        padding: 15px;
+        text-align: center;
+    }
+
+    .product-title {
+        font-weight: bold;
+        color: #333;
+        text-decoration: none;
+        transition: color 0.3s ease-in-out;
+    }
+
+    .product-title:hover {
+        color: #e95144;
+    }
+
+    .price-box {
+        margin-top: 10px;
+    }
+
+    .old-price {
+        font-weight: 400;
+        text-decoration: line-through;
+        color: #999;
+        margin-right: 10px;
+    }
+
+    .special-price {
+        font-weight: 700;
+        color: #e95144;
+    }
+
+    @media (max-width: 767px) {
+        .products-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 768px) and (max-width: 991px) {.products-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (min-width: 992px) {
+        .products-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+</style>
+{% endblock %}

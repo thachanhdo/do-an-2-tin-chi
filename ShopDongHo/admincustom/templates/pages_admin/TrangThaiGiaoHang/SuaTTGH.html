@@ -1,0 +1,59 @@
+{% extends "page/layout_admin.html" %}
+{% block title %}
+    Sửa Trạng Thái Giao Hàng
+{% endblock %}
+
+{% block content %}
+<div class="card bg-white">
+    <div class="card-header">
+        <div class="text-center">
+            <strong class="text-uppercase text-danger text-center">Sửa Trạng Thái Giao Hàng</strong>
+        </div>
+    </div>
+    <form action="" method="post">
+        {% csrf_token %}
+        <div class="card-body p-3 bg-white">
+            <div class="form-horizontal">
+                <div class="card-body p-3">
+                    <div class="row">
+                        <div class="col-md-9">
+                            <div class="form-group">
+                                <label for="transactStatusID">ID Trạng Thái</label>
+                                <div class="col-md-5">
+                                    <input type="text" id="transactStatusID" name="TransactStatusID" value="{{ form.TransactStatusID.value }}" class="form-control" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="form-group">
+                                <label for="status">Trạng Thái</label>
+                                <div class="col-md-5">
+                                    <input type="text" id="status" name="Status" value="{{ form.Status.value }}" class="form-control">
+                                </div>
+                            </div>
+                            {{ form.Status.errors }}
+                        </div>
+                        <div class="col-md-9">
+                            <div class="form-group">
+                                <label for="description">Mô Tả</label>
+                                <div class="col-md-5">
+                                    <input type="text" id="description" name="Decription" value="{{ form.Decription.value }}" class="form-control">
+                                </div>
+                            </div>
+                            {{ form.Decription.errors }}
+                        </div>
+                        <div class="col-md-9">
+                            <div class="form-group">
+                                <div class="col-md-offset-2 col-md-10">
+                                    <button type="submit" value="Update" class="btn btn-default" style="background-color:black;color: white;">Sửa</button>
+                                    <button type="button" class="btn btn-success"><a href="{% url 'admincustom:index_ttgh' %}" style="color: white;text-decoration: none;">Quay Lại</a></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

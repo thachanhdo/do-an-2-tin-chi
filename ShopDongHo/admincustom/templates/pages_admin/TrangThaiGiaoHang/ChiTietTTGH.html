@@ -1,0 +1,49 @@
+{% extends "page/layout_admin.html" %}
+{% block title %}
+    Chi Tiết Trạng Thái Giao Hàng
+{% endblock %}
+{% load custom_filters  %}
+{% block content %}
+<div class="card bg-white">
+    <div class="card-header">
+        <div class="text-center">
+            <strong class="text-uppercase text-danger text-center">Chi Tiết Trạng Thái Giao Hàng</strong>
+        </div>
+    </div>
+    <div class="card-body p-3 bg-white">
+        <div class="card-body p-3 bg-white">
+            <table class="table">
+                <tr>
+                    <th>
+                        Mã Trạng Thái
+                    </th>
+                    <td>
+                        {{ ttgh.TransactStatusID }}
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Trạng Thái
+                    </th>
+                    <td>
+                        {{ ttgh.Status }}
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Mô Tả
+                    </th>
+                    <td>
+                        {{ ttgh.Decription }}
+                    </td>
+                </tr>
+            </table>
+            <p>
+                <button type="button" class="btn btn-info"><a href="{% url 'admincustom:SuaTTGH' TransactStatusID=ttgh.TransactStatusID %}" style="color: white;text-decoration: none;">Sửa</a></button>
+                <button type="button" class="btn btn-danger"><a href="{% url 'admincustom:XoaTTGH' TransactStatusID=ttgh.TransactStatusID %}" style="color: white;text-decoration: none;">Xóa</a></button>
+                <button type="button" class="btn btn-success"><a href="{% url 'admincustom:index_ttgh'%}" style="color: white;text-decoration: none;">Quay Lại</a></button>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,174 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pyc
+*.pyo
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+env.bak/
+.ENV/
+.ENV.db/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+*.pot
+*.py[co]
+*~
+.DS_Store
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+db.json
+*.sqlite
+*.sqlite3
+
+# Django specific directories
+*.mo
+*.pot
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sln
+*.csproj
+*.user
+*.userosscache
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+.directory
+.Trashes
+*.nib
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+*.
+
+# Local environment settings
+.env
+.env.local
+.env.dev
+.env.test
+.env.prod
+.env.backup
+.env.example
+
+# Media and static files (for development)
+ShopDongHo/media/
+ShopDongHo/staticfiles/
+
+# Browser extensions
+*.tmp
+*.temp
+
+# Logs
+logs/
+*.log
+
+# Environment specific files
+config/
+secrets.json
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Windows
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.com.apple.timemachine.supported
+.ApertureTrashes
+
+# Linux
+*~
+*.swp
+*.swo
+*#
+*##
+*.tmp
+*.temp
