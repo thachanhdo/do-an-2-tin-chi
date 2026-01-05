@@ -39,9 +39,6 @@ env.bak/
 # Django
 *.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media/
 staticfiles/
 *.pot
 *.py[co]
@@ -55,8 +52,6 @@ htmlcov/
 venv/
 env/
 db.json
-*.sqlite
-*.sqlite3
 
 # Django specific directories
 *.mo
@@ -115,8 +110,6 @@ desktop.ini
 .env.example
 
 # Media and static files (for development)
-ShopDongHo/media/
-ShopDongHo/staticfiles/
 
 # Browser extensions
 *.tmp

@@ -204,26 +204,23 @@ kubectl apply -f /tmp/ShopDongHo/ShopDongHo/k8s/deploy_final.yaml
 
 ### Bước 5: Copy Database & Media Files vào PVC
 
+Vì Database và Media đã được push lên GitHub (có sẵn trong source code clone ở Bước 2), ta chỉ cần copy từ folder source vào Pod:
+
 ```bash
-# Tìm PVC storage path
-PVC_ID=$(kubectl get pvc -n trial1 shop-dongho-data -o jsonpath='{.spec.volumeName}')
-STORAGE_PATH="/var/lib/rancher/k3s/storage/${PVC_ID}_trial1_shop-dongho-data"
+# 1. Lấy tên pod đang chạy
+POD=$(kubectl get pod -n trial1 -l app=shop-dongho -o jsonpath="{.items[0].metadata.name}")
 
-# Upload database từ local
-scp "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\db.sqlite3" root@trial1:/tmp/
+# 2. Copy từ source code vào Pod
+# Lưu ý: Source code nằm ở /tmp/ShopDongHo/ShopDongHo (từ Bước 2)
 
-# Copy vào PVC
-mkdir -p ${STORAGE_PATH}/data
-cp /tmp/db.sqlite3 ${STORAGE_PATH}/data/
+# Copy Database
+kubectl cp /tmp/ShopDongHo/ShopDongHo/db.sqlite3 trial1/$POD:/app/data/db.sqlite3
 
-# Upload media files từ local
-scp -r "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo\media" root@trial1:/tmp/
+# Copy Media (Copy cả folder media vào /app/ -> sẽ merge vào /app/media)
+kubectl cp /tmp/ShopDongHo/ShopDongHo/media trial1/$POD:/app/
 
-# Copy vào PVC
-cp -r /tmp/media/uploads ${STORAGE_PATH}/media/
-
-# Set permissions
-chown -R 1000:1000 ${STORAGE_PATH}
+# 3. Phân quyền cho user 1000 (user trong container)
+kubectl exec -n trial1 $POD -- chown -R 1000:1000 /app/data /app/media
 ```
 
 ---
@@ -403,7 +400,7 @@ spec:
 
 ```bash
 # 1. Commit và push lên GitHub (từ máy local)
-cd "e:\Pet Projects\Viebal\VPS\k8s\ShopDongHo"
+cd "/tmp/ShopDongHo/ShopDongHo"
 git add -A
 git commit -m "Update feature X"
 git push
